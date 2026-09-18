@@ -25,7 +25,7 @@ namespace Stateful_API_Code_first.Models
             if (!optionsBuilder.IsConfigured)
             {
 
-                optionsBuilder.UseNpgsql("Server=localhost;Port=5432;Database=FilmRatingsDB;User Id=postgres;Password=parola_ta;");
+                // optionsBuilder.UseNpgsql("Server=localhost;Port=5432;Database=FilmRatingsDB;User Id=postgres;Password=parola_ta;");
             }
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
