@@ -1,7 +1,9 @@
+using APIfilms.Models.EntityFramework;
 using Microsoft.EntityFrameworkCore;
+using Stateful_API_Code_first.Models.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddScoped<IDataRepository<User>, UserManager>();
 
 
 builder.Services.AddDbContext<Stateful_API_Code_first.Models.FilmRatingsDBContext>(options =>

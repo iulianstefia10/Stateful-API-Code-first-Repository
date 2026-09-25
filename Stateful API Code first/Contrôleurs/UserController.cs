@@ -1,7 +1,7 @@
 ﻿using APIfilms.Models.EntityFramework;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Stateful_API_Code_first.Models;
+using Stateful_API_Code_first.Models.Repository;
 
 namespace Stateful_API_Code_first.Controllers
 {
@@ -9,25 +9,27 @@ namespace Stateful_API_Code_first.Controllers
     [ApiController]
     public class UtilisateursController : ControllerBase
     {
-        private readonly FilmRatingsDBContext _context;
+        private readonly IDataRepository<User> dataRepository;
 
-        public UtilisateursController(FilmRatingsDBContext context)
+        public UtilisateursController(IDataRepository<User> dataRepo)
         {
-            _context = context;
+            dataRepository = dataRepo;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
-            return await _context.Users.ToListAsync();
+            // Added await and Async suffix
+            return await dataRepository.GetAllAsync();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<User>> GetUtilisateurById(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            // Added await and Async suffix
+            var user = await dataRepository.GetByIdAsync(id);
 
-            if (user == null)
+            if (user.Value == null)
             {
                 return NotFound();
             }
@@ -38,8 +40,14 @@ namespace Stateful_API_Code_first.Controllers
         [HttpGet("GetByEmail/{email}")]
         public async Task<ActionResult<User>> GetUserByEmail(string email)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Mail.ToUpper() == email.ToUpper());
-            if (user == null) return NotFound();
+            // Added await and Async suffix
+            var user = await dataRepository.GetByStringAsync(email);
+
+            if (user.Value == null)
+            {
+                return NotFound();
+            }
+
             return user;
         }
 
@@ -56,25 +64,19 @@ namespace Stateful_API_Code_first.Controllers
                 return BadRequest(ModelState);
             }
 
-            _context.Entry(user).State = EntityState.Modified;
+            // Added await and Async suffix
+            var userToUpdate = await dataRepository.GetByIdAsync(id);
 
-            try
+            if (userToUpdate.Value == null)
             {
-                await _context.SaveChangesAsync();
+                return NotFound();
             }
-            catch (DbUpdateConcurrencyException)
+            else
             {
-                if (!UserExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                // Added await and Async suffix
+                await dataRepository.UpdateAsync(userToUpdate.Value, user);
+                return NoContent();
             }
-
-            return NoContent();
         }
 
         [HttpPost]
@@ -87,8 +89,8 @@ namespace Stateful_API_Code_first.Controllers
                 return BadRequest(ModelState);
             }
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            // Added await and Async suffix
+            await dataRepository.AddAsync(user);
 
             return CreatedAtAction("GetUtilisateurById", new { id = user.UserId }, user);
         }
@@ -96,21 +98,18 @@ namespace Stateful_API_Code_first.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
+            // Added await and Async suffix
+            var user = await dataRepository.GetByIdAsync(id);
+
+            if (user.Value == null)
             {
                 return NotFound();
             }
 
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
+            // Added await and Async suffix
+            await dataRepository.DeleteAsync(user.Value);
 
             return NoContent();
-        }
-
-        private bool UserExists(int id)
-        {
-            return _context.Users.Any(e => e.UserId == id);
         }
     }
 }

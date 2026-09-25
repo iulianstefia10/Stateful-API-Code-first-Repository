@@ -1,37 +1,44 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using APIfilms.Models.EntityFramework;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Stateful_API_Code_first.Controllers;
 using Stateful_API_Code_first.Models;
-using APIfilms.Models.EntityFramework;
+using Stateful_API_Code_first.Models.Repository;
+
 
 namespace Stateful_API_Code_first_Tests
 {
     [TestClass]
     public class UtilisateursControllerTests
     {
-        private FilmRatingsDBContext _context;
-        private UtilisateursController _controller;
+        private UtilisateursController controller;
+        private FilmRatingsDBContext context;
+        private IDataRepository<User> dataRepository;
 
         [TestInitialize]
         public void Setup()
         {
-            // ATENȚIE: Pune parola ta reală pentru PostgreSQL aici!
             var builder = new DbContextOptionsBuilder<FilmRatingsDBContext>();
             builder.UseNpgsql("Server=localhost;Port=5432;Database=FilmRatingsDB;User Id=postgres;Password=parola_ta;");
 
-            _context = new FilmRatingsDBContext(builder.Options);
-            _controller = new UtilisateursController(_context);
+            
+            context = new FilmRatingsDBContext(builder.Options);
+
+            
+            dataRepository = new UserManager(context);
+
+           
+            controller = new UtilisateursController(dataRepository);
         }
 
-        
 
         [TestMethod]
         public void GetUsers_ReturnsAllUsers_OK()
         {
-            var result = _controller.GetUsers().Result;
+            var result = controller.GetUsers().Result;
             var resultList = result.Value?.ToList();
-            var dbList = _context.Users.ToList();
+            var dbList = context.Users.ToList();
 
             Assert.IsNotNull(resultList);
             Assert.AreEqual(dbList.Count, resultList.Count, "Numărul de utilizatori returnați diferă de cel din BD.");
@@ -40,10 +47,10 @@ namespace Stateful_API_Code_first_Tests
         [TestMethod]
         public void GetUtilisateurById_IdExists_ReturnsUser()
         {
-            var firstUser = _context.Users.FirstOrDefault();
+            var firstUser = context.Users.FirstOrDefault();
             if (firstUser == null) Assert.Inconclusive("Nu există utilizatori în BD.");
 
-            var result = _controller.GetUtilisateurById(firstUser.UserId).Result;
+            var result = controller.GetUtilisateurById(firstUser.UserId).Result;
 
             Assert.IsNotNull(result.Value);
             Assert.AreEqual(firstUser.UserId, result.Value.UserId);
@@ -52,17 +59,17 @@ namespace Stateful_API_Code_first_Tests
         [TestMethod]
         public void GetUtilisateurById_IdNotExists_ReturnsNotFound()
         {
-            var result = _controller.GetUtilisateurById(-1).Result;
+            var result = controller.GetUtilisateurById(-1).Result;
             Assert.IsInstanceOfType(result.Result, typeof(NotFoundResult));
         }
 
         [TestMethod]
         public void GetUserByEmail_EmailExists_ReturnsUser()
         {
-            var firstUser = _context.Users.FirstOrDefault();
+            var firstUser = context.Users.FirstOrDefault();
             if (firstUser == null) Assert.Inconclusive("Nu există utilizatori în BD.");
 
-            var result = _controller.GetUserByEmail(firstUser.Mail).Result;
+            var result = controller.GetUserByEmail(firstUser.Mail).Result;
 
             Assert.IsNotNull(result.Value);
             Assert.AreEqual(firstUser.Mail, result.Value.Mail);
@@ -84,9 +91,9 @@ namespace Stateful_API_Code_first_Tests
                 CreationDate = DateTime.Now
             };
 
-            var result = _controller.PostUser(userAtester).Result;
+            var result = controller.PostUser(userAtester).Result;
 
-            var userRecupere = _context.Users.FirstOrDefault(u => u.Mail.ToUpper() == userAtester.Mail.ToUpper());
+            var userRecupere = context.Users.FirstOrDefault(u => u.Mail.ToUpper() == userAtester.Mail.ToUpper());
             Assert.IsNotNull(userRecupere);
             Assert.AreEqual(userAtester.Mail, userRecupere.Mail);
         }
@@ -97,9 +104,9 @@ namespace Stateful_API_Code_first_Tests
             User invalidUser = new User() { Mobile = "1" };
 
           
-            _controller.ModelState.AddModelError("Mobile", "The mobile number must contain 10 digits");
+            controller.ModelState.AddModelError("Mobile", "The mobile number must contain 10 digits");
 
-            var result = _controller.PostUser(invalidUser).Result;
+            var result = controller.PostUser(invalidUser).Result;
             Assert.IsInstanceOfType(result.Result, typeof(BadRequestObjectResult));
         }
 
@@ -115,15 +122,15 @@ namespace Stateful_API_Code_first_Tests
                 Pwd = "Pass"
             };
 
-            _context.Users.Add(tempUser);
-            _context.SaveChanges();
+            context.Users.Add(tempUser);
+            context.SaveChanges();
 
             int createdId = tempUser.UserId;
 
-            var result = _controller.DeleteUser(createdId).Result;
+            var result = controller.DeleteUser(createdId).Result;
             Assert.IsInstanceOfType(result, typeof(NoContentResult));
 
-            var userInDb = _context.Users.FirstOrDefault(u => u.UserId == createdId);
+            var userInDb = context.Users.FirstOrDefault(u => u.UserId == createdId);
             Assert.IsNull(userInDb);
         }
     }
