@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using APIfilms.Models.EntityFramework;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using APIfilms.Models.EntityFramework;
 using Stateful_API_Code_first.Models;
 
 namespace Stateful_API_Code_first.Controllers
@@ -11,20 +11,17 @@ namespace Stateful_API_Code_first.Controllers
     {
         private readonly FilmRatingsDBContext _context;
 
-        // Constructorul primește contextul prin Dependency Injection
         public UtilisateursController(FilmRatingsDBContext context)
         {
             _context = context;
         }
 
-        // GET: api/Utilisateurs
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
             return await _context.Users.ToListAsync();
         }
 
-        // GET: api/Utilisateurs/5
         [HttpGet("{id}")]
         public async Task<ActionResult<User>> GetUtilisateurById(int id)
         {
@@ -38,13 +35,25 @@ namespace Stateful_API_Code_first.Controllers
             return user;
         }
 
-        // PUT: api/Utilisateurs/5
+        [HttpGet("GetByEmail/{email}")]
+        public async Task<ActionResult<User>> GetUserByEmail(string email)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Mail.ToUpper() == email.ToUpper());
+            if (user == null) return NotFound();
+            return user;
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(int id, User user)
         {
             if (id != user.UserId)
             {
                 return BadRequest();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
             }
 
             _context.Entry(user).State = EntityState.Modified;
@@ -68,17 +77,22 @@ namespace Stateful_API_Code_first.Controllers
             return NoContent();
         }
 
-        // POST: api/Utilisateurs
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<User>> PostUser(User user)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetUtilisateurById", new { id = user.UserId }, user);
         }
 
-        // DELETE: api/Utilisateurs/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
